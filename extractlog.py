@@ -6,9 +6,12 @@ un fichier exploitable par Potree
 
 import argparse
 
+import pymap3d as pm
+
 def getColorDiscrete(value) :
     """ Fonction donnant la couleur correspondant à une valeur donnée
     en fonction d'une table prédéfinie.
+    + Modif THX du 1810
     """
     if value < 0.2 :       # R = 255 / 2.5 * value
         return '0 0 255'
@@ -79,6 +82,9 @@ extractfileRGB = open(args.outfile + ".XYZRGB", "w")
 lines = logfile.readlines()
 # Fermeture du fichier de données
 logfile.close()
+# Une valeur booléenne pour déterminer la position  de l'Observateur à partir
+# de la 1ère ligne de données
+firstLine = True
 # Itération sur chaque ligne du fichier
 for line in lines:
     # on ne regarde que les lignes commençant par $GPGGA
@@ -96,15 +102,24 @@ for line in lines:
         if fields[5] == "W":
             longitude = -longitude
         # l'altitude (Z) est le 10ème champ
-        altitude = fields[9]
+        altitude = float(fields[9])
+        # Extraction de la position de l'Observateur de la première ligne
+        if firstLine :
+            firstLine = False
+            lat0 = latitude
+            lon0 = longitude
+            alt0 = altitude
+        # Conversion du triplet Latitude, Longitude, Altitude en distances North, East, Up
+        # par rapport  à l'Observateur.
+        east, north, up = pm.geodetic2enu(latitude, longitude, altitude, lat0, lon0, alt0)
         # La valeur du capteur est le 16ème et dernier champ
         # On enlève le \n final qui fait partie du champ 
         sensorData = fields[15].rstrip("\n")
         # on écrit les données extraites dans une ligne du fichier final
-        extractfileXYZ.write(" ".join([str(longitude), str(latitude), altitude, sensorData])+ "\n")
+        extractfileXYZ.write(" ".join([str(east), str(north), str(up), sensorData])+ "\n")
         # Détermination de la couleur discrète correspondant à la valeur de la donnée
         color = getColor(float(sensorData))
-        extractfileRGB.write(" ".join([str(longitude), str(latitude), altitude, color])+ "\n")
+        extractfileRGB.write(" ".join([str(east), str(north), str(up), color])+ "\n")
 # Fermeture des fichiers finaux
 extractfileXYZ.close()
 extractfileRGB.close()
