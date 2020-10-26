@@ -91,35 +91,39 @@ for line in lines:
     if line.startswith("$GPGGA"):
         # on récupère tous les champs de la ligne dans une liste
         fields = line.split(",")
-        # la latitude (Y) est le 3ème champ
-        latitude = float(fields[2].lstrip("00")) / divider
-        # le 4ème champ contient l'hémisphère (N ou S) pour la latitude
-        if fields[3] == "S":
-            latitude = -latitude
-        # la longitude (X) est le 5ème champ
-        longitude = float(fields[4].lstrip("00")) / divider
-        # le 6ème champ contient l'hémisphère (E ou W) pour la longitude
-        if fields[5] == "W":
-            longitude = -longitude
-        # l'altitude (Z) est le 10ème champ
-        altitude = float(fields[9])
-        # Extraction de la position de l'Observateur de la première ligne
-        if firstLine :
-            firstLine = False
-            lat0 = latitude
-            lon0 = longitude
-            alt0 = altitude
-        # Conversion du triplet Latitude, Longitude, Altitude en distances North, East, Up
-        # par rapport  à l'Observateur.
-        east, north, up = pm.geodetic2enu(latitude, longitude, altitude, lat0, lon0, alt0)
-        # La valeur du capteur est le 16ème et dernier champ
-        # On enlève le \n final qui fait partie du champ 
-        sensorData = fields[15].rstrip("\n")
-        # on écrit les données extraites dans une ligne du fichier final
-        extractfileXYZ.write(" ".join([str(east), str(north), str(up), sensorData])+ "\n")
-        # Détermination de la couleur discrète correspondant à la valeur de la donnée
-        color = getColor(float(sensorData))
-        extractfileRGB.write(" ".join([str(east), str(north), str(up), color])+ "\n")
+        # On vérifie que que TOUS les 16 champs sont présents et que le GPS est correct
+        # 7ème champ = 0 ==> GPS incorrect
+        # print(len(fields))
+        if (len(fields) == 16) and (fields[6] != '0'):
+            # la latitude (Y) est le 3ème champ
+            latitude = float(fields[2].lstrip("00")) / divider
+            # le 4ème champ contient l'hémisphère (N ou S) pour la latitude
+            if fields[3] == "S":
+                latitude = -latitude
+            # la longitude (X) est le 5ème champ
+            longitude = float(fields[4].lstrip("00")) / divider
+            # le 6ème champ contient l'hémisphère (E ou W) pour la longitude
+            if fields[5] == "W":
+                longitude = -longitude
+            # l'altitude (Z) est le 10ème champ
+            altitude = float(fields[9])
+            # Extraction de la position de l'Observateur de la première ligne
+            if firstLine :
+                firstLine = False
+                lat0 = latitude
+                lon0 = longitude
+                alt0 = altitude
+            # Conversion du triplet Latitude, Longitude, Altitude en distances North, East, Up
+            # par rapport  à l'Observateur.
+            east, north, up = pm.geodetic2enu(latitude, longitude, altitude, lat0, lon0, alt0)
+            # La valeur du capteur est le 16ème et dernier champ
+            # On enlève le \n final qui fait partie du champ 
+            sensorData = fields[15].rstrip("\n")
+            # on écrit les données extraites dans une ligne du fichier final
+            extractfileXYZ.write(" ".join([str(east), str(north), str(up), sensorData])+ "\n")
+            # Détermination de la couleur discrète correspondant à la valeur de la donnée
+            color = getColor(float(sensorData))
+            extractfileRGB.write(" ".join([str(east), str(north), str(up), color])+ "\n")
 # Fermeture des fichiers finaux
 extractfileXYZ.close()
 extractfileRGB.close()
