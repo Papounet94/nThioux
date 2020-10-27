@@ -8,6 +8,24 @@ import argparse
 
 import pymap3d as pm
 
+def valid_latitude(angle):
+    """ Fonction déterminant si une latitude est bien comprise entre -180° et +180°
+    """
+    value = float(angle)
+    if (value < -180.0) or (value > 180.0) :
+        msg = "%r n'est pas une Latitude valide [-180, +180]" % angle
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
+def valid_longitude(angle):
+    """ Fonction déterminant si une longitude est bien comprise entre -90° et +90°
+    """
+    value = float(angle)
+    if (value < -90.0) or (value > 90.0) :
+        msg = "%r n'est pas une Longitude valide [-90, +90]" % angle
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
 def getColorDiscrete(value) :
     """ Fonction donnant la couleur correspondant à une valeur donnée
     en fonction d'une table prédéfinie.
@@ -56,8 +74,13 @@ parser.add_argument("-o", "--outfile", help="Nom des fichiers de sortie (SANS ex
     default="test")
 parser.add_argument("-linear", action="store_true", 
     help="Option de sortie linéaire pour la couleur du point")
-parser.add_argument("-dd", action="store_true", 
-    help="Longitude et Latitude en degrés décimaux")
+parser.add_argument("-lat0", type=valid_latitude,
+    help="Latitude de Référence en degrés décimaux")
+parser.add_argument("-lon0", type=valid_longitude,
+    help="Longitude de Référence en degrés décimaux")
+parser.add_argument("-alt0", type=float,
+    help="Altitude de Référence en mètres")
+    
 args = parser.parse_args()
 
 # Choix du type de repésentation des points de couleur
@@ -66,10 +89,8 @@ if args.linear :
 else:
     getColor = getColorDiscrete
 
-if args.dd :
-    divider = 100
-else :
-    divider = 1
+# le switch -dd est supprimé et on passe obligatoirement  en degrés décimaux
+divider = 100
 
 # Ouverture du fichier de log -- le récupérer sur la ligne de commande dans une version ultérieure
 #logfile = open("GPSLOG.TXT", "r")
@@ -83,15 +104,15 @@ lines = logfile.readlines()
 # Fermeture du fichier de données
 logfile.close()
 # Une valeur booléenne pour déterminer la position  de l'Observateur à partir
-# de la 1ère ligne de données
+# de la 1ère ligne de données si elle n'est pas passée en paramètres
 firstLine = True
 # Itération sur chaque ligne du fichier
 for line in lines:
-    # on ne regarde que les lignes commençant par $GPGGA
+    # On ne regarde que les lignes commençant par $GPGGA
     if line.startswith("$GPGGA"):
-        # on récupère tous les champs de la ligne dans une liste
+        # On récupère tous les champs de la ligne dans une liste
         fields = line.split(",")
-        # On vérifie que que TOUS les 16 champs sont présents et que le GPS est correct
+        # On vérifie que ue TOUS les 16 champs sont présents et que le GPS est correct
         # 7ème champ = 0 ==> GPS incorrect
         # print(len(fields))
         if (len(fields) == 16) and (fields[6] != '0'):
@@ -110,16 +131,30 @@ for line in lines:
             # Extraction de la position de l'Observateur de la première ligne
             if firstLine :
                 firstLine = False
-                lat0 = latitude
-                lon0 = longitude
-                alt0 = altitude
-            # Conversion du triplet Latitude, Longitude, Altitude en distances North, East, Up
-            # par rapport  à l'Observateur.
+                # La Latitude de référence est-elle définie ?
+                if not(args.lat0):
+                    lat0 = latitude
+                else:
+                    lat0 = args.lat0
+                # La Longitude de référence est-elle définie ?
+                if not(args.lon0):
+                    lon0 = longitude
+                else:
+                    lon0 = args.lon0
+                # L'Altutude de référence est-elle définie ?
+                if not(args.alt0):
+                    alt0 = altitude
+                else:
+                    alt0=args.alt0
+
+            # Conversion du triplet Latitude, Longitude, Altitude en distances 
+            # North, East, Up par rapport  à l'Observateur situé à la Latitude, 
+            # la Longitude et l'Altitude de référence.
             east, north, up = pm.geodetic2enu(latitude, longitude, altitude, lat0, lon0, alt0)
             # La valeur du capteur est le 16ème et dernier champ
             # On enlève le \n final qui fait partie du champ 
             sensorData = fields[15].rstrip("\n")
-            # on écrit les données extraites dans une ligne du fichier final
+            # on écrit les données extraites dans une ligne du fichier final au format texte
             extractfileXYZ.write(" ".join([str(east), str(north), str(up), sensorData])+ "\n")
             # Détermination de la couleur discrète correspondant à la valeur de la donnée
             color = getColor(float(sensorData))
