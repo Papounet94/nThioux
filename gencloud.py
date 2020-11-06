@@ -76,7 +76,7 @@ parser.add_argument("-o", "--outfile",
     help="Nom des fichiers de sortie (SANS extension) 'simu' par défaut", 
     default="simu")    
 parser.add_argument("-s", "--settings", 
-    help="Nom du fichier de paramètres (AVEC extension) 'simu.txt' par défaut", 
+    help="Nom du fichier de paramètres (AVEC extension) 'simu.ini' par défaut", 
     default="simu.ini")    
 parser.add_argument("-linear", action="store_true", 
     help="Option de sortie linéaire pour la couleur du point")
